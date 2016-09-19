@@ -55,7 +55,7 @@
 (set-current-implementation :vectorz)
 
 (defn matrix
-"
+  "
   Returns a matrix or vector, in a valid core.matrix format. You can use the slices function to
   access the rows.
 
@@ -74,13 +74,13 @@
 
   "
   ([data]
-     (m/matrix data))
+   (m/matrix data))
 
   ([data ncol &]
-     (m/matrix (partition ncol (vectorize data))))
+   (m/matrix (partition ncol (vectorize data))))
 
   ([init-val rows cols]
-     (m/compute-matrix [rows cols] (constantly init-val))))
+   (m/compute-matrix [rows cols] (constantly init-val))))
 
 (defn matrix?
   "Tests if obj is core.matrix matrix"
@@ -1781,34 +1781,41 @@
        (view (bar-chart :hair :count :group-by :eye :legend true)))
   "
   ([summary-fun col-name group-by]
-    ($rollup summary-fun col-name group-by $data))
+   ($rollup summary-fun col-name group-by $data))
   ([summary-fun col-name group-by data]
-    (let [key-fn (if (coll? col-name)
-                   (fn [row]
-                     (into [] (map #(map-get row %) col-name)))
-                   (fn [row]
-                     (map-get row col-name)))
-          rows (:rows data)
-          rollup-fns {:max (fn [col-data] (apply max col-data))
-                      :min (fn [col-data] (apply min col-data))
-                      :sum (fn [col-data] (apply + col-data))
-                      :count count
-                      :mean (fn [col-data] (/ (apply + col-data) (count col-data)))}
-          rollup-fn (if (keyword? summary-fun)
-                      (rollup-fns summary-fun)
-                      summary-fun)]
-      (loop [cur rows reduced-rows {}]
-        (if (empty? cur)
-          (let [group-cols (to-dataset (keys reduced-rows))
-                res (conj-cols group-cols (map rollup-fn (vals reduced-rows)))]
-            (col-names res (concat (col-names group-cols)
-                                   (if (coll? col-name) col-name [col-name]))))
-          (recur (next cur)
-                 (let [row (first cur)
-                       k (submap row group-by)
-                       a (reduced-rows k)
-                       b (key-fn row)]
-                   (assoc reduced-rows k (if a (conj a b) [b])))))))))
+   (let [key-fn (if (coll? col-name)
+                  (fn [row]
+                    (into [] (map #(map-get row %) col-name)))
+                  (fn [row]
+                    (map-get row col-name)))
+         ;; rows (:rows data)
+         rows (ds/row-maps data)
+         rollup-fns {:max (fn [col-data] (apply max col-data))
+                     :min (fn [col-data] (apply min col-data))
+                     :sum (fn [col-data] (apply + col-data))
+                     :count count
+                     :mean (fn [col-data] (/ (apply + col-data) (count col-data)))}
+         rollup-fn (if (keyword? summary-fun)
+                     (rollup-fns summary-fun)
+                     summary-fun)]
+     (loop [cur rows reduced-rows {}]
+       (if (empty? cur)
+         (let [group-cols (to-dataset (keys reduced-rows))
+               res (conj-cols group-cols (map rollup-fn (vals reduced-rows)))
+               new-col-names (concat (col-names group-cols)
+                                     (if (coll? col-name) col-name [col-name]))]
+           (ds/rename-columns res (zipmap (col-names res)
+                                          new-col-names)))
+         ;; (let [group-cols (to-dataset (keys reduced-rows))
+         ;;       res (conj-cols group-cols (map rollup-fn (vals reduced-rows)))]
+         ;;   (col-names res (concat (col-names group-cols)
+         ;;                          (if (coll? col-name) col-name [col-name]))))
+         (recur (next cur)
+                (let [row (first cur)
+                      k (submap row group-by)
+                      a (reduced-rows k)
+                      b (key-fn row)]
+                  (assoc reduced-rows k (if a (conj a b) [b])))))))))
 
 
 (defn $order
@@ -1890,7 +1897,7 @@
     (view ($where ($fn [Species] ($in Species #{\"virginica\" \"setosa\"})) (get-dataset :iris)))
   "
   ([col-bindings body]
-    `(fn [{:keys ~col-bindings}] ~body)))
+   `(fn [{:keys ~col-bindings}] ~body)))
 
 
 
